@@ -1,8 +1,14 @@
 from PyQt6.QtWidgets import (
     QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, 
-    QPushButton, QPlainTextEdit, QScrollArea, QLabel, QSplitter, QSizePolicy, QFrame
+    QPushButton, QPlainTextEdit, QScrollArea, QLabel, QSplitter, QSizePolicy, QFrame,
+    QFileDialog, QMessageBox
 )
 from PyQt6.QtCore import Qt, QTimer
+from viewmodel.main_viewmodel import ViewModelError
+
+class ViewError(Exception):
+    """Generic exception for the view layer."""
+    pass
 
 class MainWindow(QMainWindow):
     def __init__(self, viewmodel):
@@ -33,6 +39,7 @@ class MainWindow(QMainWindow):
         
         # --- Left Side: JSON Text Area ---
         self.json_text_edit = QPlainTextEdit()
+        self.json_text_edit.setReadOnly(True)
         self.json_text_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         self.json_text_edit.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.json_text_edit.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
@@ -145,7 +152,26 @@ class MainWindow(QMainWindow):
         self.right_btn_container.setFixedWidth(max(0, right_width - offset))
 
     def on_load_json_clicked(self):
-        print("Load JSON clicked")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open JSON File",
+            "",
+            "JSON Files (*.json);;All Files (*)"
+        )
+        if file_path:
+            try:
+                self.load_file_with_handling(file_path)
+            except ViewError as e:
+                QMessageBox.critical(self, "Error", str(e))
+
+    def load_file_with_handling(self, file_path):
+        """Helper method to handle the rethrowing logic as requested."""
+        try:
+            content = self.viewmodel.load_json(file_path)
+            self.json_text_edit.setPlainText(content)
+        except ViewModelError as e:
+            # Rethrow as ViewError as per the "generic exception" request
+            raise ViewError(str(e))
 
     def on_save_svg_clicked(self):
         print("Save SVG clicked")
