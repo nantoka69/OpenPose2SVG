@@ -1,8 +1,9 @@
 from PyQt6.QtWidgets import (
     QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, 
     QPushButton, QPlainTextEdit, QScrollArea, QLabel, QSplitter, QSizePolicy, QFrame,
-    QFileDialog, QMessageBox
+    QFileDialog, QMessageBox, QApplication
 )
+import sys
 from PyQt6.QtCore import Qt, QTimer
 from viewmodel.main_viewmodel import ViewModelError
 
@@ -12,6 +13,9 @@ class ViewError(Exception):
 
 class MainWindow(QMainWindow):
     def __init__(self, viewmodel):
+        self.app = QApplication.instance()
+        if self.app is None:
+            self.app = QApplication(sys.argv)
         super().__init__()
         self.viewmodel = viewmodel
         self.init_ui()

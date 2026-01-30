@@ -6,9 +6,9 @@ class ViewModelError(Exception):
     pass
 
 class MainViewModel:
-    def __init__(self):
-        self.file_loader = FileLoader()
-        self.json_parser = PoseJsonParser()
+    def __init__(self, file_loader, json_parser):
+        self.file_loader = file_loader
+        self.json_parser = json_parser
         
     def load_json(self, file_path):
         try:
@@ -22,3 +22,5 @@ class MainViewModel:
             raise ViewModelError(str(e))
         except Exception as e:
             raise ViewModelError(f"Unexpected error in ViewModel: {str(e)}")
+
+
