@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
 )
 import sys
 from PyQt6.QtCore import Qt, QTimer
-from viewmodel.main_viewmodel import ViewModelError
+from viewmodel.error import ViewModelError
 
 class ViewError(Exception):
     """Generic exception for the view layer."""
@@ -126,6 +126,10 @@ class MainWindow(QMainWindow):
         # Connect signals
         self.load_json_button.clicked.connect(self.on_load_json_clicked)
         self.save_svg_button.clicked.connect(self.on_save_svg_clicked)
+
+        # Connect ViewModel signals
+        self.viewmodel.on_json_loaded.connect(self.on_json_loaded)
+        self.viewmodel.on_load_error.connect(self.on_load_error)
         
         # Use QTimer to ensure alignment happens after the layout is calculated
         QTimer.singleShot(0, self.update_bottom_alignment)
@@ -163,19 +167,15 @@ class MainWindow(QMainWindow):
             "JSON Files (*.json);;All Files (*)"
         )
         if file_path:
-            try:
-                self.load_file_with_handling(file_path)
-            except ViewError as e:
-                QMessageBox.critical(self, "Error", str(e))
+            self.json_text_edit.setPlainText("Loading...")
+            self.viewmodel.load_json(file_path)
 
-    def load_file_with_handling(self, file_path):
-        """Helper method to handle the rethrowing logic as requested."""
-        try:
-            content = self.viewmodel.load_json(file_path)
-            self.json_text_edit.setPlainText(content)
-        except ViewModelError as e:
-            # Rethrow as ViewError as per the "generic exception" request
-            raise ViewError(str(e))
+    def on_json_loaded(self, content):
+        self.json_text_edit.setPlainText(content)
+
+    def on_load_error(self, error_msg):
+        self.json_text_edit.setPlainText("")
+        QMessageBox.critical(self, "Error", error_msg)
 
     def on_save_svg_clicked(self):
         print("Save SVG clicked")
