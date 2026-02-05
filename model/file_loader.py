@@ -1,4 +1,5 @@
 import os
+import time
 
 class ModelError(Exception):
     """Generic exception for the model layer."""

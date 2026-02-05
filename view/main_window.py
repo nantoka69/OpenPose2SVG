@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
 import sys
 from PyQt6.QtCore import Qt, QTimer
 from viewmodel.error import ViewModelError
+from viewmodel.processing_state import ProcessingState
 
 class ViewError(Exception):
     """Generic exception for the view layer."""
@@ -130,6 +131,10 @@ class MainWindow(QMainWindow):
         # Connect ViewModel signals
         self.viewmodel.on_json_loaded.connect(self.on_json_loaded)
         self.viewmodel.on_load_error.connect(self.on_load_error)
+        self.viewmodel.on_state_changed.connect(self.on_processing_state_changed)
+        
+        # Initialize UI state
+        self.on_processing_state_changed(ProcessingState.APP_START)
         
         # Use QTimer to ensure alignment happens after the layout is calculated
         QTimer.singleShot(0, self.update_bottom_alignment)
@@ -167,7 +172,6 @@ class MainWindow(QMainWindow):
             "JSON Files (*.json);;All Files (*)"
         )
         if file_path:
-            self.json_text_edit.setPlainText("Loading...")
             self.viewmodel.load_json(file_path)
 
     def on_json_loaded(self, content):
@@ -179,3 +183,40 @@ class MainWindow(QMainWindow):
 
     def on_save_svg_clicked(self):
         print("Save SVG clicked")
+
+    def on_processing_state_changed(self, state):
+        now = __import__('time').time()
+        print(f"[View] ({now:.3f}) Received state change: {state}")
+        # Update window title to reflect state for debugging
+        self.setWindowTitle(f"OpenPose2SVG - [{state.name}]")
+        
+        if state == ProcessingState.APP_START:
+            self.load_json_button.setEnabled(True)
+            self.save_svg_button.setEnabled(False)
+            self.image_label.setText("READY")
+            self.image_label.setStyleSheet("background-color: #eee; color: #333;")
+        elif state == ProcessingState.LOADING_FILE:
+            self.load_json_button.setEnabled(False)
+            self.save_svg_button.setEnabled(False)
+            self.image_label.setText("STEP 1: LOADING FILE...")
+            self.image_label.setStyleSheet("background-color: blue; color: white; font-size: 24px; font-weight: bold;")
+        elif state == ProcessingState.RENDERING:
+            self.load_json_button.setEnabled(False)
+            self.save_svg_button.setEnabled(False)
+            self.image_label.setText("STEP 2: RENDERING VISUALS...")
+            self.image_label.setStyleSheet("background-color: red; color: yellow; font-size: 24px; font-weight: bold;")
+        elif state == ProcessingState.FINISHED:
+            self.load_json_button.setEnabled(True)
+            self.save_svg_button.setEnabled(True)
+            self.image_label.setText("DONE: RENDERING FINISHED")
+            self.image_label.setStyleSheet("background-color: green; color: white; font-size: 20px;")
+        elif state == ProcessingState.ERROR:
+            self.load_json_button.setEnabled(True)
+            self.save_svg_button.setEnabled(False)
+            self.image_label.setText("ERROR OCCURRED")
+            self.image_label.setStyleSheet("background-color: darkred; color: white;")
+        
+        # Force immediate refresh
+        self.image_label.repaint()
+        QApplication.instance().processEvents()
+        print(f"[View] ({__import__('time').time():.3f}) UI updated for {state}")
