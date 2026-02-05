@@ -8,13 +8,15 @@ class LoadOpenPointDataWorker(QObject):
     finished = pyqtSignal()
     error = pyqtSignal(str)
     json_loaded = pyqtSignal(str)
+    on_svg_ready = pyqtSignal(str)
     rendering_started = pyqtSignal()
 
-    def __init__(self, file_path, file_loader, json_parser):
+    def __init__(self, file_path, file_loader, json_parser, svg_renderer):
         super().__init__()
         self.file_path = file_path
         self.file_loader = file_loader
         self.json_parser = json_parser
+        self.svg_renderer = svg_renderer
 
     def run(self):
         try:
@@ -22,13 +24,19 @@ class LoadOpenPointDataWorker(QObject):
             content = self.file_loader.load_text_file(self.file_path)
 
             print("[Worker] Starting JSON parsing...")
-            _, pretty_json = self.json_parser.parse_pose_json(content)
-
+            pose_data, pretty_json = self.json_parser.parse_pose_json(content)
+            
             print("[Worker] Parsing complete, emitting json_loaded signal")
             self.json_loaded.emit(pretty_json)
-
+            
             print("[Worker] File loaded successfully. Emitting rendering_started signal...")
             self.rendering_started.emit()
+
+            print("[Worker] Starting SVG rendering...")
+            svg_content = self.svg_renderer.render(pose_data)
+            
+            print("[Worker] SVG rendering complete, emitting on_svg_ready signal")
+            self.on_svg_ready.emit(svg_content)
 
             print("[Worker] Rendering complete. Emitting finished signal...")
             self.finished.emit()

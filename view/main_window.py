@@ -4,7 +4,9 @@ from PyQt6.QtWidgets import (
     QFileDialog, QMessageBox, QApplication
 )
 import sys
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QByteArray, QRectF
+from PyQt6.QtGui import QPainter, QPixmap
+from PyQt6.QtSvg import QSvgRenderer
 from viewmodel.error import ViewModelError
 from viewmodel.processing_state import ProcessingState
 
@@ -19,6 +21,7 @@ class MainWindow(QMainWindow):
             self.app = QApplication(sys.argv)
         super().__init__()
         self.viewmodel = viewmodel
+        self.current_svg_content = None # Store SVG for re-rendering on resize
         self.init_ui()
         
     def init_ui(self):
@@ -121,16 +124,16 @@ class MainWindow(QMainWindow):
         self.json_text_edit.setMinimumWidth(panel_min)
         self.scroll_area.setMinimumWidth(panel_min)
         
-        # Update button alignment when splitter moves
-        self.splitter.splitterMoved.connect(self.update_bottom_alignment)
-        
-        # Connect signals
         self.load_json_button.clicked.connect(self.on_load_json_clicked)
         self.save_svg_button.clicked.connect(self.on_save_svg_clicked)
+        
+        self.splitter.splitterMoved.connect(self.update_bottom_alignment)
+        self.splitter.splitterMoved.connect(lambda: QTimer.singleShot(10, self._render_svg))
 
         # Connect ViewModel signals
         self.viewmodel.on_json_loaded.connect(self.on_json_loaded)
         self.viewmodel.on_load_error.connect(self.on_load_error)
+        self.viewmodel.on_svg_ready.connect(self.on_svg_ready)
         self.viewmodel.on_state_changed.connect(self.on_processing_state_changed)
         
         # Initialize UI state
@@ -143,6 +146,8 @@ class MainWindow(QMainWindow):
         super().resizeEvent(event)
         # Use QTimer to decouple resize from layout calculation to prevent feedback loops
         QTimer.singleShot(0, self.update_bottom_alignment)
+        # Re-render SVG to fit new size, slightly delayed to let layout settle
+        QTimer.singleShot(10, self._render_svg)
 
     def update_bottom_alignment(self):
         # Synchronize bottom containers with splitter panels
@@ -184,6 +189,61 @@ class MainWindow(QMainWindow):
     def on_save_svg_clicked(self):
         print("Save SVG clicked")
 
+    def on_svg_ready(self, svg_content):
+        print("[View] SVG content received")
+        self.current_svg_content = svg_content
+        self._render_svg()
+
+    def _render_svg(self):
+        if not self.current_svg_content:
+            return
+            
+        print("[View] Rendering SVG to viewport size (preserving aspect ratio)...")
+        
+        # Use viewport size instead of label size for more reliable dimensions
+        viewport_size = self.scroll_area.viewport().size()
+        
+        # Use a small buffer to ensure we don't trigger scrollbars
+        w = max(10, viewport_size.width() - 2)
+        h = max(10, viewport_size.height() - 2)
+            
+        # Create a renderer from the SVG string
+        renderer = QSvgRenderer(QByteArray(self.current_svg_content.encode('utf-8')))
+        
+        pixmap = QPixmap(w, h)
+        pixmap.fill(Qt.GlobalColor.white)
+        
+        painter = QPainter(pixmap)
+        
+        # Calculate aspect ratio preserving rectangle
+        svg_size = renderer.defaultSize()
+        if svg_size.isValid():
+            # Calculate the scale factor
+            target_rect = QRectF(0, 0, w, h)
+            aspect_ratio = svg_size.width() / svg_size.height()
+            
+            if w / h > aspect_ratio:
+                # Viewport is wider than SVG - scale by height
+                new_w = h * aspect_ratio
+                target_rect.setX((w - new_w) / 2)
+                target_rect.setWidth(new_w)
+            else:
+                # Viewport is taller than SVG - scale by width
+                new_h = w / aspect_ratio
+                target_rect.setY((h - new_h) / 2)
+                target_rect.setHeight(new_h)
+            
+            renderer.render(painter, target_rect)
+        else:
+            # Fallback if svg size is invalid
+            renderer.render(painter)
+            
+        painter.end()
+        
+        # Display the pixmap
+        self.image_label.setPixmap(pixmap)
+        print(f"[View] SVG rendered onto label (aspect ratio preserved) with size {w}x{h}")
+
     def on_processing_state_changed(self, state):
         now = __import__('time').time()
         print(f"[View] ({now:.3f}) Received state change: {state}")
@@ -194,27 +254,28 @@ class MainWindow(QMainWindow):
             self.load_json_button.setEnabled(True)
             self.save_svg_button.setEnabled(False)
             self.image_label.setText("READY")
-            self.image_label.setStyleSheet("background-color: #eee; color: #333;")
+            self.image_label.setStyleSheet("color: #333;")
         elif state == ProcessingState.LOADING_FILE:
             self.load_json_button.setEnabled(False)
             self.save_svg_button.setEnabled(False)
             self.image_label.setText("STEP 1: LOADING FILE...")
-            self.image_label.setStyleSheet("background-color: blue; color: white; font-size: 24px; font-weight: bold;")
+            self.image_label.setStyleSheet("color: blue; font-size: 24px; font-weight: bold;")
         elif state == ProcessingState.RENDERING:
             self.load_json_button.setEnabled(False)
             self.save_svg_button.setEnabled(False)
             self.image_label.setText("STEP 2: RENDERING VISUALS...")
-            self.image_label.setStyleSheet("background-color: red; color: yellow; font-size: 24px; font-weight: bold;")
+            self.image_label.setStyleSheet("color: red; font-size: 24px; font-weight: bold;")
         elif state == ProcessingState.FINISHED:
             self.load_json_button.setEnabled(True)
             self.save_svg_button.setEnabled(True)
-            self.image_label.setText("DONE: RENDERING FINISHED")
-            self.image_label.setStyleSheet("background-color: green; color: white; font-size: 20px;")
+            # Remove any text so only the pixmap is visible
+            self.image_label.setText("")
+            self.image_label.setStyleSheet("color: green; font-size: 20px;")
         elif state == ProcessingState.ERROR:
             self.load_json_button.setEnabled(True)
             self.save_svg_button.setEnabled(False)
             self.image_label.setText("ERROR OCCURRED")
-            self.image_label.setStyleSheet("background-color: darkred; color: white;")
+            self.image_label.setStyleSheet("color: darkred;")
         
         # Force immediate refresh
         self.image_label.repaint()
