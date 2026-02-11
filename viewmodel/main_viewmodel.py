@@ -11,11 +11,10 @@ class MainViewModel(QObject):
     on_svg_ready = pyqtSignal(str)
     on_state_changed = pyqtSignal(ProcessingState)
 
-    def __init__(self, file_loader, json_parser, svg_renderer):
+    def __init__(self, file_loader, json_parser):
         super().__init__()
         self.file_loader = file_loader
         self.json_parser = json_parser
-        self.svg_renderer = svg_renderer
         self.current_json_loader_thread = None
         self.current_json_loader_worker = None
         self.on_state_changed.emit(ProcessingState.APP_START)
@@ -27,7 +26,7 @@ class MainViewModel(QObject):
 
         self.current_json_loader_thread = QThread()
         self.current_json_loader_worker = LoadOpenPointDataWorker(
-            file_path, self.file_loader, self.json_parser, self.svg_renderer
+            file_path, self.file_loader, self.json_parser
         )
         
         self.current_json_loader_worker.moveToThread(self.current_json_loader_thread)

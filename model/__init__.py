@@ -4,4 +4,3 @@ from .svg_renderer import SVGRenderer
 
 file_loader = FileLoader()
 json_parser = PoseJsonParser()
-svg_renderer = SVGRenderer()

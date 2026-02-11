@@ -11,11 +11,22 @@ class SVGRenderer:
     This renderer uses the first entry from the list for the entire rendering process.
     """
     KEYPOINT_MARKER_COLORS = ['#00ff00', '#ff0000', '#0000ff']
-
-    def render(self, pose_json_data):
+    
+    def __init__(self, pose_json_data):
         """
-        Renders the given pose JSON data into an SVG string.
-        Extracts the first entry from the input list and uses it for rendering.
+        Initializes the renderer with OpenPose JSON data.
+        Validates the data and extracts the first entry for rendering.
+        """
+        if not pose_json_data:
+            raise Exception("No pose data found")
+        self.pose_json_data = pose_json_data
+        self.pose_data = pose_json_data[0]
+        self.__extract_canvas_size()
+
+    @staticmethod
+    def render_pose(pose_json_data):
+        """
+        Creates a renderer object for the given pose JSON and returns the rendered SVG string.
         
         Args:
             pose_json_data: The parsed OpenPose JSON data.
@@ -23,15 +34,20 @@ class SVGRenderer:
         Returns:
             str: The rendered SVG as a string.
         """
-        
-        if not pose_json_data:
-            raise Exception("No pose data found")
-        pose_data = pose_json_data[0]
+        renderer = SVGRenderer(pose_json_data)
+        return renderer.render()
 
-        header = self._generate_svg_header(pose_data)
+    def render(self):
+        """
+        Renders the stored pose data into an SVG string.
+        
+        Returns:
+            str: The rendered SVG as a string.
+        """
+        header = self._generate_svg_header()
         
         people_svg_content = []
-        for person in pose_data.get('people', []):
+        for person in self.pose_data.get('people', []):
             # Parse different keypoint sets
             pose_keypoints = self.__parse_keypoints(person.get('pose_keypoints_2d', []))
             face_keypoints = self.__parse_keypoints(person.get('face_keypoints_2d', []))
@@ -79,15 +95,21 @@ class SVGRenderer:
         return ""
 
 
-    def _generate_svg_header(self, pose_data):
-        width = pose_data.get('canvas_width', DEFAULT_CANVAS_WIDTH)
-        height = pose_data.get('canvas_height', DEFAULT_CANVAS_HEIGHT)
+    def __extract_canvas_size(self):
+        """
+        Extracts canvas dimensions from the pose data and stores them as attributes.
+        """
+        self.width = self.pose_data.get('canvas_width', DEFAULT_CANVAS_WIDTH)
+        self.height = self.pose_data.get('canvas_height', DEFAULT_CANVAS_HEIGHT)
 
-        print(f"SVG Header: Canvas size {width}x{height}")
-        
+        print(f"SVG Header: Canvas size {self.width}x{self.height}")
+
+
+    def _generate_svg_header(self):        
         defs = self.__define_markers()
         
-        return f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">\n{defs}'
+        return f'<svg width="{self.width}" height="{self.height}" xmlns="http://www.w3.org/2000/svg">\n{defs}'
+
 
     def __define_markers(self):
         """

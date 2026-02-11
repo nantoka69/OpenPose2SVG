@@ -7,12 +7,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from model.svg_renderer import SVGRenderer
 
 def test_svg_renderer():
-    renderer = SVGRenderer()
-    
     # Test 1: OpenPose list format (one entry)
     print("Test 1: OpenPose list format (one entry)")
     pose_data_1 = [{'canvas_width': 500, 'canvas_height': 500}]
-    svg_1 = renderer.render(pose_data_1)
+    svg_1 = SVGRenderer.render_pose(pose_data_1)
     assert '<svg width="500" height="500"' in svg_1
     print("Test 1 Passed")
 
@@ -22,7 +20,7 @@ def test_svg_renderer():
         {'canvas_width': 800, 'canvas_height': 600},
         {'canvas_width': 100, 'canvas_height': 100}
     ]
-    svg_2 = renderer.render(pose_data_2)
+    svg_2 = SVGRenderer.render_pose(pose_data_2)
     assert '<svg width="800" height="600"' in svg_2
     print("Test 2 Passed")
 
@@ -30,7 +28,7 @@ def test_svg_renderer():
     print("\nTest 3: Empty list")
     pose_data_3 = []
     try:
-        renderer.render(pose_data_3)
+        SVGRenderer.render_pose(pose_data_3)
         assert False, "Should have raised Exception: No pose data found"
     except Exception as e:
         assert str(e) == "No pose data found"
