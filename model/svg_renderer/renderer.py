@@ -34,7 +34,7 @@ class SVGRenderer:
         Returns:
             str: The rendered SVG as a string.
         """
-        header = self._generate_svg_header()
+        header = self.__generate_svg_header()
         
         people_svg_content = []
         for person in self.pose_data.get('people', []):
@@ -50,7 +50,7 @@ class SVGRenderer:
             people_svg_content.append(self.__render_hand_left(left_hand_keypoints))
             people_svg_content.append(self.__render_hand_right(right_hand_keypoints))
             
-        footer = self._generate_svg_footer()
+        footer = self.__generate_svg_footer()
         
         return header + "".join(people_svg_content) + footer
 
@@ -105,7 +105,7 @@ class SVGRenderer:
         print(f"SVG Header: Canvas size {self.width}x{self.height}")
 
 
-    def _generate_svg_header(self):        
+    def __generate_svg_header(self):        
         defs = self.__define_markers()
         
         return f'<svg width="{self.width}" height="{self.height}" xmlns="http://www.w3.org/2000/svg">\n{defs}'
@@ -130,7 +130,7 @@ class SVGRenderer:
             
         return f"\t<defs>{''.join(markers)}\n\t</defs>"
 
-    def _generate_svg_footer(self):
+    def __generate_svg_footer(self):
         return "</svg>"
 
     def __draw_pose_bone(self, keypoints, idx1, idx2):
@@ -151,7 +151,7 @@ class SVGRenderer:
         x2, y2 = kp2.x, kp2.y
         
         # Scale if coordinates are normalized (between 0 and 1)
-        x1, y1, x2, y2 = self._scale_coordinates_if_needed(x1, y1, x2, y2)
+        x1, y1, x2, y2 = self.__scale_coordinates_if_needed(x1, y1, x2, y2)
             
         # Get bone color
         bone_color = POSE_BONE_COLORS.get((idx1, idx2))
@@ -165,7 +165,7 @@ class SVGRenderer:
         
         return self.__draw_bezier_loop(x1, y1, color1, x2, y2, color2, bone_color)
 
-    def _scale_coordinates_if_needed(self, x1, y1, x2, y2):
+    def __scale_coordinates_if_needed(self, x1, y1, x2, y2):
         """
         Scales coordinates if they are normalized (between 0 and 1).
         returnsscaled x1, y1, x2, y2.
