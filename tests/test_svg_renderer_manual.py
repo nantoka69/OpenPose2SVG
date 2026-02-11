@@ -26,12 +26,15 @@ def test_svg_renderer():
     assert '<svg width="800" height="600"' in svg_2
     print("Test 2 Passed")
 
-    # Test 3: Empty list (should use defaults)
+    # Test 3: Empty list (should raise exception)
     print("\nTest 3: Empty list")
     pose_data_3 = []
-    svg_3 = renderer.render(pose_data_3)
-    assert '<svg width="400" height="400"' in svg_3
-    print("Test 3 Passed")
+    try:
+        renderer.render(pose_data_3)
+        assert False, "Should have raised Exception: No pose data found"
+    except Exception as e:
+        assert str(e) == "No pose data found"
+        print("Test 3 Passed (Caught expected exception)")
 
 if __name__ == "__main__":
     try:
