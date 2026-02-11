@@ -5,11 +5,9 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from model.svg_renderer import SVGRenderer
-from model.keypoints import KeyPoint
+from model.svg_renderer.keypoints import KeyPoint
 
 def test_keypoint_parsing():
-    renderer = SVGRenderer()
-    
     # Sample OpenPose JSON data with one person
     pose_json_data = [{
         'canvas_width': 500,
@@ -22,9 +20,11 @@ def test_keypoint_parsing():
         }]
     }]
     
+    renderer = SVGRenderer(pose_json_data)
+    
     # We need to access private methods for testing parsing logic
     # or just check if render runs without error and produces valid SVG
-    svg = renderer.render(pose_json_data)
+    svg = renderer.render()
     assert '<svg width="500" height="500"' in svg
     assert svg.endswith('</svg>')
     print("SVG rendering test passed (no errors during parsing)")

@@ -2,7 +2,7 @@ from PyQt6.QtCore import QObject, pyqtSignal
 import time
 from model.file_loader import ModelError
 from model.json_parser import ParserError
-from model.svg_renderer import SVGRenderer
+from model.svg_renderer import render_pose
 
 class LoadOpenPointDataWorker(QObject):
     """Worker class to run loading task in background thread."""
@@ -33,7 +33,7 @@ class LoadOpenPointDataWorker(QObject):
             self.rendering_started.emit()
 
             print("[Worker] Starting SVG rendering...")
-            svg_content = SVGRenderer.render_pose(pose_data)
+            svg_content = render_pose(pose_data)
             
             print("[Worker] SVG rendering complete, emitting on_svg_ready signal")
             self.on_svg_ready.emit(svg_content)
