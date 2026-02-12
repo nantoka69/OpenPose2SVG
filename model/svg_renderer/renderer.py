@@ -2,6 +2,7 @@ import math
 DEFAULT_CANVAS_WIDTH = 400
 DEFAULT_CANVAS_HEIGHT = 400
 DEFAULT_COLOR = "#cccccc"
+FACE_KEYPOINT_COLOR = "#ffffff"
 POSE_BONE_ALPHA_VALUE = "0.6"
 
 from .keypoints import KeyPoint
@@ -89,8 +90,23 @@ class SVGRenderer:
         return "".join(svg_elements)
 
     def __render_face(self, keypoints):
-        """Internal method to render the face. Placeholder for now."""
-        return ""
+        """
+        Renders the face keypoints as filled white circles without stroke.
+        The circles are encapsulated in a <g id="head"> group.
+        """
+        if not keypoints:
+            return ""
+            
+        svg_elements = []
+        for kp in keypoints:
+            if kp.score > 0:
+                x, y = self.__scale_head_keypoint_if_needed(kp.x, kp.y)
+                svg_elements.append(f'<circle cx="{x}" cy="{y}" r="2" style="fill:{FACE_KEYPOINT_COLOR};stroke:none" />')
+                
+        if not svg_elements:
+            return ""
+            
+        return f'\t<g id="head">\n\t\t{"".join(svg_elements)}\n\t</g>\n'
 
     def __render_hand_left(self, keypoints):
         """Internal method to render the left hand. Placeholder for now."""
@@ -189,6 +205,16 @@ class SVGRenderer:
             x2 *= self.width
             y2 *= self.height
         return x1, y1, x2, y2
+
+    def __scale_head_keypoint_if_needed(self, x, y):
+        """
+        Scales a single head (face) keypoint if the coordinates are normalized.
+        Returns scaled x, y.
+        """
+        if 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0:
+            x *= self.width
+            y *= self.height
+        return x, y
 
     def __draw_bezier_loop(self, x1, y1, color1, x2, y2, color2, fill_color):
         """
