@@ -263,7 +263,7 @@ class MainWindow(QMainWindow):
         if state == ProcessingState.APP_START:
             self.load_json_button.setEnabled(True)
             self.save_svg_button.setEnabled(False)
-            self.image_label.setText("READY")
+            self.image_label.setText("Nothing loaded")
             self.image_label.setStyleSheet("color: #333;")
         elif state == ProcessingState.LOADING_FILE:
             self.load_json_button.setEnabled(False)
@@ -283,13 +283,6 @@ class MainWindow(QMainWindow):
         elif state == ProcessingState.FINISHED:
             self.load_json_button.setEnabled(True)
             self.save_svg_button.setEnabled(self.current_svg_content is not None)
-        elif state == ProcessingState.ERROR:
-            self.load_json_button.setEnabled(True)
-            self.save_svg_button.setEnabled(self.current_svg_content is not None)
-            
-            if self.current_svg_content is None:
-                self.image_label.setText("ERROR OCCURRED")
-                self.image_label.setStyleSheet("color: darkred;")
         
         # Force immediate refresh
         self.image_label.repaint()

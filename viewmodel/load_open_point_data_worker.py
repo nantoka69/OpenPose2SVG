@@ -26,21 +26,23 @@ class LoadOpenPointDataWorker(QObject):
             print("[Worker] Starting JSON parsing...")
             pose_data, pretty_json = self.json_parser.parse_pose_json(content)
             
-            print("[Worker] Parsing complete, emitting json_loaded signal")
-            self.json_loaded.emit(pretty_json)
-            
             print("[Worker] File loaded successfully. Emitting rendering_started signal...")
             self.rendering_started.emit()
 
             print("[Worker] Starting SVG rendering...")
             svg_content = render_pose(pose_data)
             
-            print("[Worker] SVG rendering complete, emitting on_svg_ready signal")
+            print("[Worker] Processing complete, emitting signals")
+            self.json_loaded.emit(pretty_json)
             self.on_svg_ready.emit(svg_content)
-
-            print("[Worker] Rendering complete. Emitting finished signal...")
             self.finished.emit()
-        except (ModelError, ParserError) as e:
+        except ParserError as e:
+            self.error.emit(f"Pose file format error: {str(e)}")
+        except TypeError as e:
+            print(e)
+            self.error.emit(f"Pose file format error: {str(e)}")
+        except ModelError as e:
             self.error.emit(str(e))
         except Exception as e:
+            print (f"Exception in worker, type = {type(e)}")
             self.error.emit(f"Unexpected error in ViewModel: {str(e)}")

@@ -20,6 +20,7 @@ class MainViewModel(QObject):
         self.current_json_loader_worker = None
         self.current_save_worker_thread = None
         self.current_save_worker = None
+        self.has_valid_data = False
         self.on_state_changed.emit(ProcessingState.APP_START)
         
     def load_json(self, file_path):
@@ -63,7 +64,7 @@ class MainViewModel(QObject):
 
     def __handle_save_error(self, error_msg):
         print(f"[ViewModel] SVG save error: {error_msg}")
-        self.on_state_changed.emit(ProcessingState.ERROR)
+        self.on_state_changed.emit(ProcessingState.FINISHED)
         self.on_load_error.emit(error_msg)
         self.__cleanup_save_thread()
 
@@ -102,6 +103,7 @@ class MainViewModel(QObject):
             
         if emit_state:
             print("[ViewModel] Transitioning to FINISHED")
+            self.has_valid_data = True
             self.on_state_changed.emit(ProcessingState.FINISHED)
 
     def __on_json_loader_thread_finished(self):
@@ -109,7 +111,11 @@ class MainViewModel(QObject):
         self.current_json_loader_worker = None
 
     def __handle_worker_error(self, error_msg):
-        self.on_state_changed.emit(ProcessingState.ERROR)
+        if self.has_valid_data:
+            self.on_state_changed.emit(ProcessingState.FINISHED)
+        else:
+            self.on_state_changed.emit(ProcessingState.APP_START)
+            
         self.on_load_error.emit(error_msg)
         self.__handle_json_loader_worker_finished(emit_state=False)
 

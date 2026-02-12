@@ -102,5 +102,31 @@ if __name__ == "__main__":
         app.processEvents()
         time.sleep(0.1)
         
-    print(f"States emitted on error: {states_emitted}")
-    # Expected: [LOADING_FILE, ERROR, FINISHED]
+    print(f"States emitted on error (before successful load): {states_emitted}")
+    # Expected: [LOADING_FILE, APP_START]
+    
+    # Test error case after success
+    states_emitted.clear()
+    file_loader.load_text_file.side_effect = None
+    file_loader.load_text_file.return_value = '{"test": "data"}'
+    vm.load_json("good.json")
+    
+    start_time = time.time()
+    while len(states_emitted) < 3 and time.time() - start_time < 2:
+        app.processEvents()
+        time.sleep(0.1)
+        
+    print(f"States emitted on success: {states_emitted}")
+    # Expected: [LOADING_FILE, RENDERING, FINISHED]
+    
+    states_emitted.clear()
+    file_loader.load_text_file.side_effect = Exception("Load failed again")
+    vm.load_json("bad2.json")
+    
+    start_time = time.time()
+    while len(states_emitted) < 2 and time.time() - start_time < 2:
+        app.processEvents()
+        time.sleep(0.1)
+        
+    print(f"States emitted on error (after successful load): {states_emitted}")
+    # Expected: [LOADING_FILE, FINISHED]
