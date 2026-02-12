@@ -1,13 +1,16 @@
 import math
+import colorsys
 DEFAULT_CANVAS_WIDTH = 400
 DEFAULT_CANVAS_HEIGHT = 400
 DEFAULT_COLOR = "#cccccc"
 FACE_KEYPOINT_COLOR = "#ffffff"
+HAND_KEYPOINT_COLOR = "#0000ff"
 POSE_BONE_ALPHA_VALUE = "0.6"
 
 from .keypoints import KeyPoint
 from .pose_keypoint_colors import POSE_KEYPOINT_COLORS
 from .pose_bone_colors import POSE_BONE_COLORS
+from .hand_bone_indices import HAND_BONE_INDICES
 
 class SVGRenderer:
     """
@@ -99,8 +102,8 @@ class SVGRenderer:
             
         svg_elements = []
         for kp in keypoints:
-            if kp.score > 0:
-                x, y = self.__scale_head_keypoint_if_needed(kp.x, kp.y)
+            if kp.score > 0 and self.__are_coordinates_valid(kp):
+                x, y = self.__scale_head_keypoint_if_needed(kp)
                 svg_elements.append(f'<circle cx="{x}" cy="{y}" r="2" style="fill:{FACE_KEYPOINT_COLOR};stroke:none" />')
                 
         if not svg_elements:
@@ -109,12 +112,55 @@ class SVGRenderer:
         return f'\t<g id="head">\n\t\t{"".join(svg_elements)}\n\t</g>\n'
 
     def __render_hand_left(self, keypoints):
-        """Internal method to render the left hand. Placeholder for now."""
-        return ""
+        """
+        Renders the left hand keypoints and bones.
+        """
+        return self.__render_hand_generic(keypoints, "hand_left")
 
     def __render_hand_right(self, keypoints):
-        """Internal method to render the right hand. Placeholder for now."""
-        return ""
+        """
+        Renders the right hand keypoints and bones.
+        """
+        return self.__render_hand_generic(keypoints, "hand_right")
+
+    def __render_hand_generic(self, keypoints, hand_id):
+        """
+        Generic internal method to render a hand (left or right).
+        Connects keypoints with lines and applies markers.
+        """
+        if not keypoints:
+            return ""
+            
+        svg_elements = []
+        num_indices = len(HAND_BONE_INDICES)
+        
+        for i, (idx1, idx2) in enumerate(HAND_BONE_INDICES):
+            if idx1 < len(keypoints) and idx2 < len(keypoints):
+                kp1 = keypoints[idx1]
+                kp2 = keypoints[idx2]
+                
+                if kp1.score > 0 and kp2.score > 0 and self.__are_coordinates_valid(kp1, kp2):
+                    x1, y1 = self.__scale_head_keypoint_if_needed(kp1)
+                    x2, y2 = self.__scale_head_keypoint_if_needed(kp2)
+                    
+                    # Calculate color using HSV
+                    h = i / float(num_indices)
+                    color_hex = self.__hsv_to_hex(h, 1.0, 1.0)
+                    
+                    line = f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" ' \
+                           f'stroke="{color_hex}" stroke-width="2" ' \
+                           f'marker-start="url(#marker_{hand_id})" marker-end="url(#marker_{hand_id})" />'
+                    svg_elements.append(line)
+                    
+        if not svg_elements:
+            return ""
+            
+        return f'\t<g id="{hand_id}">\n\t\t{"".join(svg_elements)}\n\t</g>\n'
+
+    def __hsv_to_hex(self, h, s, v):
+        """Helper to convert HSV to Hex color string."""
+        r, g, b = colorsys.hsv_to_rgb(h, s, v)
+        return '#{:02x}{:02x}{:02x}'.format(int(r * 255), int(g * 255), int(b * 255))
 
 
     def __extract_canvas_size(self):
@@ -149,6 +195,14 @@ class SVGRenderer:
 			<circle cx="10" cy="10" r="9" style="fill:{color};fill-opacity:{POSE_BONE_ALPHA_VALUE};stroke:none;"/>
 		</marker>"""
             markers.append(marker)
+
+        # Add specific markers for hand keypoints (side-specific)
+        for side in ["left", "right"]:
+            hand_marker = f"""
+		<marker id="marker_hand_{side}" viewBox="0 0 5 5" refX="2.5" refY="2.5" markerWidth="5" markerHeight="5">
+			<circle cx="2.5" cy="2.5" r="2" style="fill:{HAND_KEYPOINT_COLOR};fill-opacity:1.0;stroke:none;"/>
+		</marker>"""
+            markers.append(hand_marker)
             
         return f"\t<defs>{''.join(markers)}\n\t</defs>"
 
@@ -173,14 +227,11 @@ class SVGRenderer:
         kp1 = keypoints[idx1]
         kp2 = keypoints[idx2]
         
-        if kp1.score <= 0 or kp2.score <= 0:
+        if kp1.score <= 0 or kp2.score <= 0 or not self.__are_coordinates_valid(kp1, kp2):
             return ""
             
-        x1, y1 = kp1.x, kp1.y
-        x2, y2 = kp2.x, kp2.y
-        
         # Scale if coordinates are normalized (between 0 and 1)
-        x1, y1, x2, y2 = self.__scale_coordinates_if_needed(x1, y1, x2, y2)
+        x1, y1, x2, y2 = self.__scale_coordinates_if_needed(kp1, kp2)
             
         # Get bone color
         bone_color = POSE_BONE_COLORS.get((idx1, idx2))
@@ -194,11 +245,13 @@ class SVGRenderer:
         
         return self.__draw_bezier_loop(x1, y1, color1, x2, y2, color2, bone_color)
 
-    def __scale_coordinates_if_needed(self, x1, y1, x2, y2):
+    def __scale_coordinates_if_needed(self, kp1, kp2):
         """
         Scales coordinates if they are normalized (between 0 and 1).
-        returnsscaled x1, y1, x2, y2.
+        Returns scaled x1, y1, x2, y2.
         """
+        x1, y1, _ = kp1
+        x2, y2, _ = kp2
         if 0.0 <= x1 <= 1.0 and 0.0 <= y1 <= 1.0 and 0.0 <= x2 <= 1.0 and 0.0 <= y2 <= 1.0:
             x1 *= self.width
             y1 *= self.height
@@ -206,15 +259,23 @@ class SVGRenderer:
             y2 *= self.height
         return x1, y1, x2, y2
 
-    def __scale_head_keypoint_if_needed(self, x, y):
+    def __scale_head_keypoint_if_needed(self, kp):
         """
         Scales a single head (face) keypoint if the coordinates are normalized.
         Returns scaled x, y.
         """
+        x, y, _ = kp
         if 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0:
             x *= self.width
             y *= self.height
         return x, y
+
+    def __are_coordinates_valid(self, *keypoints):
+        """
+        Centralized validation for coordinates.
+        Returns True if all coordinates in the provided KeyPoint objects are non-negative.
+        """
+        return all(kp.x >= 0 and kp.y >= 0 for kp in keypoints)
 
     def __draw_bezier_loop(self, x1, y1, color1, x2, y2, color2, fill_color):
         """

@@ -7,5 +7,10 @@ class KeyPoint:
         self.y = y
         self.score = score
 
+    def __iter__(self):
+        yield self.x
+        yield self.y
+        yield self.score
+
     def __repr__(self):
         return f"KeyPoint(x={self.x}, y={self.y}, s={self.score})"

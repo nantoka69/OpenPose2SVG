@@ -70,6 +70,7 @@ class MainViewModel(QObject):
     def __cleanup_save_thread(self):
         if self.current_save_worker_thread:
             self.current_save_worker_thread.quit()
+            self.current_save_worker_thread.wait()
         if self.current_save_worker:
             self.current_save_worker.deleteLater()
         self.current_save_worker_thread = None
@@ -94,6 +95,7 @@ class MainViewModel(QObject):
     def __handle_json_loader_worker_finished(self, emit_state=True):
         if self.current_json_loader_thread:
             self.current_json_loader_thread.quit()
+            self.current_json_loader_thread.wait()
         
         if self.current_json_loader_worker:
             self.current_json_loader_worker.deleteLater()
