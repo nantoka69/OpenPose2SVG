@@ -35,6 +35,7 @@ class SVGRenderer:
             str: The rendered SVG as a string.
         """
         header = self.__generate_svg_header()
+        background = self.__generate_background()
         
         people_svg_content = []
         for person in self.pose_data.get('people', []):
@@ -43,6 +44,11 @@ class SVGRenderer:
             face_keypoints = self.__parse_keypoints(person.get('face_keypoints_2d', []))
             left_hand_keypoints = self.__parse_keypoints(person.get('hand_left_keypoints_2d', []))
             right_hand_keypoints = self.__parse_keypoints(person.get('hand_right_keypoints_2d', []))
+
+            print(f"Pose Keypoints: {len(pose_keypoints)}")
+            print(f"Face Keypoints: {len(face_keypoints)}")
+            print(f"Left Hand Keypoints: {len(left_hand_keypoints)}")
+            print(f"Right Hand Keypoints: {len(right_hand_keypoints)}")
             
             # Render each set
             people_svg_content.append(self.__render_pose(pose_keypoints))
@@ -52,7 +58,7 @@ class SVGRenderer:
             
         footer = self.__generate_svg_footer()
         
-        return header + "".join(people_svg_content) + footer
+        return header + background + "".join(people_svg_content) + footer
 
     def __parse_keypoints(self, keypoint_array):
         """
@@ -129,6 +135,13 @@ class SVGRenderer:
             markers.append(marker)
             
         return f"\t<defs>{''.join(markers)}\n\t</defs>"
+
+    def __generate_background(self):
+        """
+        Generates a black background rectangle matching the canvas size.
+        The rectangle is encapsulated in an SVG group.
+        """
+        return f'\t<g id="background">\n\t\t<rect width="{self.width}" height="{self.height}" fill="black" />\n\t</g>\n'
 
     def __generate_svg_footer(self):
         return "</svg>"

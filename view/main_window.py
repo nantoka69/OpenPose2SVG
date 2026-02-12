@@ -187,7 +187,17 @@ class MainWindow(QMainWindow):
         QMessageBox.critical(self, "Error", error_msg)
 
     def on_save_svg_clicked(self):
-        print("Save SVG clicked")
+        if not self.current_svg_content:
+            return
+            
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save SVG File",
+            "pose.svg",
+            "SVG Files (*.svg);;All Files (*)"
+        )
+        if file_path:
+            self.viewmodel.save_svg(file_path, self.current_svg_content)
 
     def on_svg_ready(self, svg_content):
         print("[View] SVG content received")
@@ -265,15 +275,20 @@ class MainWindow(QMainWindow):
             self.save_svg_button.setEnabled(False)
             self.image_label.setText("STEP 2: RENDERING VISUALS...")
             self.image_label.setStyleSheet("color: red; font-size: 24px; font-weight: bold;")
+        elif state == ProcessingState.SAVING_SVG:
+            self.load_json_button.setEnabled(False)
+            self.save_svg_button.setEnabled(False)
+            self.image_label.setText("SAVING SVG...")
+            self.image_label.setStyleSheet("color: orange; font-size: 24px; font-weight: bold;")
         elif state == ProcessingState.FINISHED:
             self.load_json_button.setEnabled(True)
-            self.save_svg_button.setEnabled(True)
+            self.save_svg_button.setEnabled(self.current_svg_content is not None)
             # Remove any text so only the pixmap is visible
             self.image_label.setText("")
             self.image_label.setStyleSheet("color: green; font-size: 20px;")
         elif state == ProcessingState.ERROR:
             self.load_json_button.setEnabled(True)
-            self.save_svg_button.setEnabled(False)
+            self.save_svg_button.setEnabled(self.current_svg_content is not None)
             self.image_label.setText("ERROR OCCURRED")
             self.image_label.setStyleSheet("color: darkred;")
         

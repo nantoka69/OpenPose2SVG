@@ -5,4 +5,5 @@ class ProcessingState(Enum):
     LOADING_FILE = auto()
     RENDERING = auto()
     FINISHED = auto()
+    SAVING_SVG = auto()
     ERROR = auto()

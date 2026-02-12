@@ -5,7 +5,7 @@ class ModelError(Exception):
     """Generic exception for the model layer."""
     pass
 
-class FileLoader:
+class FileHandler:
     MAX_FILE_SIZE = 100 * 1024  # 100 KB
 
     def load_text_file(self, file_path):
@@ -20,3 +20,13 @@ class FileLoader:
             if isinstance(e, ModelError):
                 raise e
             raise ModelError(str(e))
+
+    def save_text_file(self, file_path, content):
+        """
+        Saves the provided content to a file.
+        """
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+        except Exception as e:
+            raise ModelError(f"Failed to save file: {str(e)}")

@@ -1,5 +1,6 @@
 from PyQt6.QtCore import QObject, pyqtSignal, QThread
 from .load_open_point_data_worker import LoadOpenPointDataWorker
+from .save_svg_worker import SaveSvgWorker
 from .processing_state import ProcessingState
 
 from .error import ViewModelError
@@ -11,12 +12,14 @@ class MainViewModel(QObject):
     on_svg_ready = pyqtSignal(str)
     on_state_changed = pyqtSignal(ProcessingState)
 
-    def __init__(self, file_loader, json_parser):
+    def __init__(self, file_handler, json_parser):
         super().__init__()
-        self.file_loader = file_loader
+        self.file_handler = file_handler
         self.json_parser = json_parser
         self.current_json_loader_thread = None
         self.current_json_loader_worker = None
+        self.current_save_worker_thread = None
+        self.current_save_worker = None
         self.on_state_changed.emit(ProcessingState.APP_START)
         
     def load_json(self, file_path):
@@ -26,7 +29,7 @@ class MainViewModel(QObject):
 
         self.current_json_loader_thread = QThread()
         self.current_json_loader_worker = LoadOpenPointDataWorker(
-            file_path, self.file_loader, self.json_parser
+            file_path, self.file_handler, self.json_parser
         )
         
         self.current_json_loader_worker.moveToThread(self.current_json_loader_thread)
@@ -34,6 +37,51 @@ class MainViewModel(QObject):
         self.__connect_signals()
         
         self.current_json_loader_thread.start()
+
+    def save_svg(self, file_path, svg_content):
+        print(f"[ViewModel] Transitioning to SAVING_SVG for: {file_path}")
+        self.on_state_changed.emit(ProcessingState.SAVING_SVG)
+        self.__stop_existing_save_thread_if_any()
+
+        self.current_save_worker_thread = QThread()
+        self.current_save_worker = SaveSvgWorker(
+            file_path, svg_content, self.file_handler
+        )
+        
+        self.current_save_worker.moveToThread(self.current_save_worker_thread)
+        
+        self.current_save_worker_thread.started.connect(self.current_save_worker.run)
+        self.current_save_worker.finished.connect(self.__handle_save_finished)
+        self.current_save_worker.error.connect(self.__handle_save_error)
+        
+        self.current_save_worker_thread.start()
+
+    def __handle_save_finished(self):
+        print("[ViewModel] SVG saved successfully")
+        self.__cleanup_save_thread()
+        self.on_state_changed.emit(ProcessingState.FINISHED)
+
+    def __handle_save_error(self, error_msg):
+        print(f"[ViewModel] SVG save error: {error_msg}")
+        self.on_state_changed.emit(ProcessingState.ERROR)
+        self.on_load_error.emit(error_msg)
+        self.__cleanup_save_thread()
+
+    def __cleanup_save_thread(self):
+        if self.current_save_worker_thread:
+            self.current_save_worker_thread.quit()
+        if self.current_save_worker:
+            self.current_save_worker.deleteLater()
+        self.current_save_worker_thread = None
+        self.current_save_worker = None
+
+    def __stop_existing_save_thread_if_any(self):
+        if self.current_save_worker_thread:
+            if self.current_save_worker_thread.isRunning():
+                self.current_save_worker_thread.quit()
+            self.current_save_worker_thread.wait()
+            self.current_save_worker_thread = None
+            self.current_save_worker = None
 
     def __handle_json_loaded(self, pretty_json):
         print("[ViewModel] JSON loaded successfully")

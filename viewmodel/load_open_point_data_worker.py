@@ -1,6 +1,6 @@
 from PyQt6.QtCore import QObject, pyqtSignal
 import time
-from model.file_loader import ModelError
+from model.file_handler import ModelError
 from model.json_parser import ParserError
 from model.svg_renderer import render_pose
 
@@ -12,16 +12,16 @@ class LoadOpenPointDataWorker(QObject):
     on_svg_ready = pyqtSignal(str)
     rendering_started = pyqtSignal()
 
-    def __init__(self, file_path, file_loader, json_parser):
+    def __init__(self, file_path, file_handler, json_parser):
         super().__init__()
         self.file_path = file_path
-        self.file_loader = file_loader
+        self.file_handler = file_handler
         self.json_parser = json_parser
 
     def run(self):
         try:
             print(f"[Worker] Starting file load for: {self.file_path}")
-            content = self.file_loader.load_text_file(self.file_path)
+            content = self.file_handler.load_text_file(self.file_path)
 
             print("[Worker] Starting JSON parsing...")
             pose_data, pretty_json = self.json_parser.parse_pose_json(content)
