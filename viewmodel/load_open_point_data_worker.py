@@ -1,6 +1,5 @@
 from PyQt6.QtCore import QObject, pyqtSignal
 import time
-import traceback
 from model.file_handler import ModelError
 from model.json_parser import ParserError
 from model.svg_renderer import render_pose
@@ -40,10 +39,8 @@ class LoadOpenPointDataWorker(QObject):
         except ParserError as e:
             self.error.emit(f"Pose file format error: {str(e)}")
         except TypeError as e:
-            traceback.print_exc()
             self.error.emit(f"Pose file format error: {str(e)}")
         except ModelError as e:
             self.error.emit(str(e))
         except Exception as e:
-            traceback.print_exc()
             self.error.emit(f"Unexpected error in ViewModel: {str(e)}")
