@@ -69,6 +69,9 @@ class SVGRenderer:
         Groups a flat array of numbers into KeyPoint objects.
         Each keypoint is represented by 3 consecutive values: x, y, probability.
         """
+        if keypoint_array is None:
+            return []
+            
         keypoints = []
         for i in range(0, len(keypoint_array), 3):
             if i + 2 < len(keypoint_array):
